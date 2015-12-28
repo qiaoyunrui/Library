@@ -1,153 +1,148 @@
-/*
-图书管理系统
-*/
+#define _CRT_SECURE_NO_WARNINGS
+#define MAX_SIZE 1000
 #include<string.h>
 #include<stdlib.h>
 #include<stdio.h>
-//---Moudle
-typedef struct PriBook{
-char name[20];
-char author[20];
-}Book;	//无卵用
-typedef struct PriBookClass{
+#include<time.h>
+#include<Windows.h>
+/*MOUDLE*/
+//-----------------------------图书馆-------------------------
+typedef struct PriBookClass {
 	int id;	//书号
 	char name[20];
 	char author[20];
 	int totalMemory;
 	int currentMemory;
-	struct PriBookClass *next;	//只想下一个节点
+	struct PriBookClass *next;
 }BookClass;
-typedef struct PriLibrary{
+typedef struct PriLibrary {
 	int totalMemory;
 	int currentMemory;
-	int numOfBookClass;	//书的种类
-	BookClass *headBookClass;	//头节点
+	int numOfBookClass;	
+	BookClass *headBookClass;	
 }Library;
-typedef struct PriReader{
+//-----------------------------个人书库-----------------------
+typedef struct PriBorBook {
+	int id;
+	int amount;
+}BorBook;
+typedef struct PriBorBookSet {
+	BorBook *borBooks[MAX_SIZE];
+	int amount;
+}BorBookSet;
+//-----------------------------读者信息-----------------------
+typedef struct PriReader {
 	int id;
 	char name[20];
-	//散列表->所借的书
+	BorBookSet borBookSet;
 	struct PriReader *next;
 }Reader;
-typedef struct PriReaderSet{
+typedef struct PriReaderSet {
 	int amount;
-	Reader *headReader;		//头节点
+	Reader *headReader;
 }ReaderSet;
+//-----------------------------借还记录-----------------------
 typedef struct PriRecord {
+	int readerId;
+	int bookId;
+	int amount;	//图书数量
 	char time[20];	//借书时间
 	char limitedTime[20];	//归还期限
-	Reader reader;
-	BookClass bookClass;
-	int amount;	//图书数量
 	int action;
 	struct PriRecord *next;
 }Record;
-typedef struct PriRecordSet{
+typedef struct PriRecordSet {
 	int amount;	//记录数量
 	Record *headRecord;	//头节点
 }RecordSet;
-typedef struct PriSearchNode {
+//-----------------------------Id检索表-----------------------
+typedef struct PriSearchListById {
 	int id;
-	char name[20];
-	char author[20];
 	BookClass *bookClass;
-}SearchNode;
-typedef struct PriSearchList {
-	SearchNode searchNode[1000];
+}SearchIdNode;
+typedef struct PriSearchListByIdSet {
+	SearchIdNode searchId[MAX_SIZE];
 	int amount;
-}SearchList;
-//Control
-//--------------------------------------------------------------
-Book createBook(char *name, char *author) {
-	Book book;
-	strcpy(book.name,name);
-	strcpy(book.author,author);
-	return book;
-}
-//--------------------------------------------------------------
-/*初始化一类书*/
-BookClass *createBookClass(char *name,char *author) {
-	BookClass* bookClass;
-	bookClass = (BookClass *)malloc(sizeof(BookClass));
-	bookClass->id = -1;	//还没有分配书号
-	strcpy(bookClass->name,name);
-	strcpy(bookClass->author,author);
-	bookClass->totalMemory = 0;
-	bookClass->currentMemory = 0;
-	bookClass->next = NULL;
-	return bookClass;
-}
-/*添加书籍*/
-void priAddBooks(BookClass *bookClass,int amount) {
-	bookClass->totalMemory += amount;
-	bookClass->currentMemory += amount;
-}
-/*删除书籍*/
-void priDeleteBooks(BookClass *bookClass, int amount) {
-	if (amount > bookClass->totalMemory) {
-		bookClass->totalMemory = 0;
-	}
-	else {
-		bookClass->totalMemory -= amount;
-	}
-	if (amount > bookClass->currentMemory) {
-		bookClass->currentMemory = 0;
-	}
-	else {
-		bookClass->currentMemory -= amount;
-	}
-}
-/*清除书籍*/
-void priClear(BookClass *bookClass) {
-	BookClass *tempBook;
-	tempBook = bookClass;
-	bookClass = bookClass->next;
-	free(tempBook);	//释放内存
-}
-/*借书*/
-void priBor(BookClass *bookClass,int *amount) {
-	if (bookClass->currentMemory < *amount) {
-		*amount = bookClass->currentMemory;
-		bookClass->currentMemory = 0;
-	}
-	else {
-		bookClass->currentMemory -= *amount;
-	}
-}
-/*还书*/
-void priRet(BookClass *bookClass, int amount) {
-	bookClass->currentMemory += amount;
-}
-/*修改书籍信息*/
-void priModifyBookClass(BookClass *bookClass,char *name,char *author) {
-	strcpy(bookClass->name, name);
-	strcpy(bookClass->author,author);
-}
-/*查询书籍存量信息*/
-void priQueryBookClass(BookClass bookClass, int *totalMemory, int *currentMemory) {
-	*totalMemory = bookClass.totalMemory;
-	*currentMemory = bookClass.currentMemory;
-}
-//--------------------------------------------------------------
-/*ReaderSet*/
+}SearchIdList;
+//-----------------------------综合检索表---------------------
+
+/*Control*/
+//-----------------------------读者信息-----------------------
 /*创建读者列表*/
 ReaderSet createReaderSet() {
 	ReaderSet readerSet;
 	readerSet.amount = 0;
 	readerSet.headReader = NULL;
+	return readerSet;
 }
-/*添加读者*/
-void addReader(ReaderSet *readerSet,char *name) {
+/*注册,返回读者id*/
+int addReader(ReaderSet *readerSet,char *name) {
 	Reader *reader;
-	reader = (Reader*)malloc(sizeof(Reader));
+	reader = (Reader *)malloc(sizeof(Reader));
 	reader->id = readerSet->amount;
 	strcpy(reader->name,name);
+	reader->borBookSet.amount = 0;
 	reader->next = readerSet->headReader;
 	readerSet->headReader = reader;
+	readerSet->amount++;
+	return readerSet->amount - 1;
 }
-//--------------------------------------------------------------
-/*RecordSet*/
-/*创建*/
+/*根据id查找读者*/
+Reader *searchReader(ReaderSet readerSet, int id) {
+	Reader *reader = NULL;
+	while (readerSet.headReader) {
+		if (readerSet.headReader->id == id) {
+			reader = readerSet.headReader;
+		}
+		readerSet.headReader = readerSet.headReader->next;
+	}
+	return reader;
+}
+/*修改读者名字*/
+void alterReader(ReaderSet *readerSet, int id, char *name) {
+	Reader *reader;
+	reader = searchReader(*readerSet,id);
+	if (reader) {
+		strcpy(reader->name,name);
+	}
+	else {
+		printf("未找到该id\n");
+	}
+}
+/*为个人书库增加书籍，即借书*/
+int addBorBooks(ReaderSet *readerSet,int readerId,int bookId,int amount) {
+	Reader *reader;
+	BorBook *borBook;
+	reader = searchReader(*readerSet,readerId);
+	if (reader) {
+		borBook = searchBorBook(reader->borBookSet,bookId);
+		if (borBook) {	//已经有这本书
+			borBook->amount += amount;
+		}
+		else {	//没有这本书
+			if (!addNewBorBook(&(reader->borBookSet),bookId,amount)) {
+				amount = 0;
+			}
+		}
+	}
+	return amount;
+}
+/*从个人书库取书，即还书*/
+int deteleBorBook(ReaderSet *readerSet, int readerId, int bookId, int amount) {
+	Reader *reader;
+	BorBook *borBook;
+	reader = searchReader(*readerSet, readerId);
+	if (reader) {
+		borBook = searchBorBook(reader->borBookSet, bookId);
+		if (borBook) {
+			amount = amount > borBook->amount ? borBook->amount : amount;	//所还的书超出容量
+			borBook->amount -= amount;
+		}
+	}
+	return amount;
+}
+//-----------------------------借还记录-----------------------
+/*创建记录表*/
 RecordSet createRecordSet() {
 	RecordSet recordSet;
 	recordSet.amount = 0;
@@ -155,141 +150,202 @@ RecordSet createRecordSet() {
 	return recordSet;
 }
 /*添加纪录*/
-void addRecord(BookClass bookClass, Reader reader, int amount, int action) {
-	Record *record;
-	record = (Record*)malloc(sizeof(Record));
+void addRecord(RecordSet *recordSet,int readerId,int bookId,int amount,int action) {
+	Record *record = (Record *)malloc(sizeof(Record));
+	record->readerId = readerId;
+	record->bookId = bookId;
 	record->amount = amount;
-	record->bookClass = bookClass;
-	record->reader = reader;
-	record->time = ;
-	record->limitedTime = ;
 	record->action = action;
+	time_t t;
+	struct tm *timeinfo;
+	t = time(NULL);
+	char *time;
+	time = ctime(&t);
+	t += 2592000;
+	timeinfo = localtime(&t);
+	strcpy(record->time,time);
+	strcpy(record->limitedTime, asctime(timeinfo));
+	record->next = recordSet->headRecord;
+	recordSet->headRecord = record;
+	recordSet->amount++;
 }
-//--------------------------------------------------------------
-/*SearchList*/
-/*为图书创建一个线性检索表*/
-SearchList createSearchList(Library library) {
-	SearchList searchList;
-	searchList.amount = library.numOfBookClass;	//获取书的总类数
-	int i = 0;
-	while (library.headBookClass) {
-		searchList.searchNode[i].id = library.headBookClass->id;
-		strcpy(searchList.searchNode[i].name, library.headBookClass->name);
-		strcpy(searchList.searchNode[i].author, library.headBookClass->author);
-		searchList.searchNode[i].bookClass = library.headBookClass;
-		i++;
-		library.headBookClass = library.headBookClass->next;	//指向下一个节点
-	}
-	return searchList;
-}
-/*二分查找*/
-int search(SearchList searchList,int index[1000],char *key) {
-	char id[10];
-	int sign = 0;
-	for (int i = 0; i < searchList.amount; i++) {
-		itoa(searchList.searchNode[i].id, id, 10);
-		if (strcmp(id, key) ||
-			strcpy(searchList.searchNode[i].name, key) ||
-			strcpy(searchList.searchNode[i].author, key)) {	//匹配
-			index[sign] = i;
-			sign++;
+//-----------------------------个人书库-----------------------
+/*查找个人书库的书籍*/
+BorBook *searchBorBook(BorBookSet borBookSet,int id) {
+	BorBook *borBook = NULL;
+	for (int i = 0; i < borBookSet.amount; i++) {
+		if (id == borBookSet.borBooks[i]->id) {
+			borBook = borBookSet.borBooks[i];
 		}
 	}
-	return sign;	
+	return borBook;
 }
-//--------------------------------------------------------------
-/*Library*/
-/*创建*/
-Library createLibrary() {
-	Library library;
-	library.currentMemory = 0;
-	library.numOfBookClass = 0;
-	library.totalMemory = 0;
-	library.headBookClass = NULL;
-}
-/*综合查询*/
-BookClass **queryLibrary(Library library,char* key) {
-	SearchList searchList;
-	searchList = createSearchList(library);	//获得检索线性表
-	BookClass *bookClasses[1000];	//放置找到的bookClass
-	int index[1000];
-	int length = search(searchList,index, key);
-	for (int i = 0; i < length; i++) {
-		bookClasses[i] = searchList.searchNode[index[i]].bookClass;
+/*新增个人书库的书籍*/
+int addNewBorBook(BorBookSet *borBookSet, int id, int amount) {
+	if (borBookSet->amount + 1 == MAX_SIZE) {
+		return 0;
 	}
-	return bookClasses;
+	else {
+		BorBook *borBook = (BorBook *)malloc(sizeof(BorBook));
+		borBook->amount = amount;
+		borBook->id = id;
+		borBookSet->borBooks[borBookSet->amount] = borBook;
+		borBookSet->amount++;
+		return 1;
+	}
 }
-/*ID查询*/
-BookClass *queryLibraryById(Library library, int id) {
-	BookClass *bookClass = NULL; 
-	SearchList searchList;
-	searchList = createSearchList(library);
-	for (int i = 0; i < searchList.amount; i++) {
-		if (id = searchList.searchNode[i].id) {
-			bookClass = searchList.searchNode[i].bookClass;
+//-----------------------------ID索引表-----------------------
+SearchIdList CreateSearchIdList(Library library) {
+	SearchIdList searchIdList;
+	int i = 0;
+	searchIdList.amount = library.numOfBookClass;
+	while (library.headBookClass) {
+		searchIdList.searchId[i].id = library.headBookClass->id;
+		searchIdList.searchId[i].bookClass = library.headBookClass;
+		i++;
+	}
+	return searchIdList;
+}
+/*通过Id查询*/
+BookClass *searchById(SearchIdList searchIdList, int id) {
+	BookClass *bookClass = NULL;
+	for (int i = 0; i < searchIdList.amount; i++) {
+		if (id == searchIdList.searchId[i].id) {
+			bookClass = searchIdList.searchId[i].bookClass;
 			break;
 		}
 	}
 	return bookClass;
 }
-/*增加*/
-int addBooks(Library *library, int id,char *name,char *author,int amount) {
-	BookClass *bookClass;
-	BookClass *temp;
-	bookClass = queryLibraryById(*library,id);
-	if (bookClass == NULL) {	//未查找到
-		bookClass = createBookClass(name,author);	//已经开辟空间
-		bookClass->id = library->numOfBookClass;
-		library->numOfBookClass++;
-		library->headBookClass = temp;
-		library->headBookClass = bookClass;
-		bookClass->next = temp;
-	}
-	else {	//图书馆中有对应的书
-		priAddBooks(bookClass, amount);
-	}
-	return bookClass->id;
+//-----------------------------图书馆-------------------------
+/*创建*/
+Library createLibrary() {
+	Library library;
+	library.currentMemory = 0;
+	library.totalMemory = 0;
+	library.numOfBookClass = 0;
+	library.headBookClass = NULL;
+	return library;
 }
-/*删除*/
-void deleteBooks(Library *library, int id, int amount) {
+/*综合查询*/
+
+/*ID查询*/
+BookClass *queryLibraryById(Library library, int id) {
 	BookClass *bookClass;
-	bookClass = queryLibraryById(*library,id);
+	SearchIdList searchIdList = CreateSearchIdList(library);
+	bookClass = searchById(searchIdList, id);
+	return bookClass;
+}
+/*采编入库*/
+void addBooks(Library *library, char *name, char *author, int amount) {
+	BookClass *bookClass = NULL;
+	while (library->headBookClass) {
+		if (strcmp(name, library->headBookClass->name) && strcmp(author, library->headBookClass->author)) {
+			bookClass = library->headBookClass;
+			break;
+		}
+		library->headBookClass = library->headBookClass->next;
+	}
 	if (bookClass) {
-		priDeleteBooks(bookClass, amount);
+		bookClass->totalMemory += amount;
+		bookClass->currentMemory += amount;
 	}
+	else {
+		bookClass = (BookClass*)malloc(sizeof(BookClass));
+		strcpy(bookClass->name, name);
+		strcpy(bookClass->author, author);
+		bookClass->currentMemory = amount;
+		bookClass->totalMemory = amount;
+		if (library->headBookClass) {
+			bookClass->id = library->headBookClass->id + 1;
+		}
+		else {
+			bookClass->id = 0;
+		}
+		bookClass->next = library->headBookClass;
+		library->headBookClass = bookClass;
+		library->numOfBookClass++;
+	}
+	library->totalMemory += amount;
+	library->currentMemory += amount;
 }
-/*清除*/
+/*旧书清零*/
 void clearBooks(Library *library, int id) {
 	BookClass *bookClass;
-	bookClass = queryLibraryById(*library,id);
-	priClear(bookClass);
-}
-/*修改*/
-void modifyBooks(Library *library,int id,char *name,char *author) {
-	BookClass *bookClass;
-	bookClass = queryLibraryById(*library,id);
-	priModifyBookClass(bookClass,name,author);
+	BookClass *temp;
+	bookClass = queryLibraryById(*library, id);
+	if (bookClass) {
+		library->numOfBookClass--;
+		library->totalMemory -= bookClass->totalMemory;
+		library->currentMemory -= bookClass->currentMemory;
+		temp = bookClass;
+		bookClass = bookClass->next;
+		free(temp);
+	}
 }
 /*借书*/
-int borBooks(Library *library, int id, int amount) {
+int borrowBooks(Library *library, int id, int amount) {
 	BookClass *bookClass;
-	bookClass = queryLibraryById(*library,id);
+	bookClass = queryLibraryById(*library, id);
 	if (bookClass) {
-		priBor(bookClass, &amount);
+		amount = amount > bookClass->currentMemory ? bookClass->currentMemory : amount;
+		bookClass->currentMemory -= amount;
+		library->currentMemory -= amount;
 	}
 	else {
 		amount = 0;
 	}
-	return amount;	//返回最终所借的书数
+	return amount;
 }
 /*还书*/
-void retBooks(Library *library, int id, int amount) {
-	BookClass *bookClass;
-	bookClass = queryLibraryById(*library,id);
+int returnBooks(Library *library, int id, int amount) {
+	BookClass *bookClass = queryLibraryById(*library, id);
 	if (bookClass) {
-		priRet(bookClass,amount);
+		bookClass->currentMemory += amount;
+		library->currentMemory += amount;
 	}
-	else {	//未找到图书
-		//清除散列表数据
+	else {
+		amount = 0;
 	}
+	return amount;
+}
+//-----------------------------借书--------------------------
+/*借书，返回借的数量*/
+int Borrow(Library *library, ReaderSet *readerSet, RecordSet *recordSet, int readerId, int bookId, int amount) {
+	amount = borrowBooks(library, bookId, amount);	//从图书馆借书
+	if (amount) {
+		int temp = amount;
+		amount = addBorBooks(readerSet, readerId, bookId, amount);		//个人仓库增加书籍
+		if (amount) {
+			addRecord(recordSet, readerId, bookId, amount, 1);
+		}
+		else {	//个人仓库无法添加书籍，把书返回仓库
+			returnBooks(library, bookId, temp);
+		}
+	}
+	return 0;
+}
+//-----------------------------还书--------------------------
+/*还书，返回还回去的数量*/
+int Return(Library *library, ReaderSet *readerSet, RecordSet *recordSet, int readerId, int bookId, int amount) {
+	amount = deteleBorBook(readerSet, readerId, bookId, amount);	//从个人书库里移除书籍
+	if (amount) {
+		int temp = amount;
+		amount = returnBooks(library, bookId, amount);		//把书返还到图书馆
+		if (amount) {
+			addRecord(recordSet,readerId,bookId,amount,0);
+		}
+		else {
+			amount = addBorBooks(readerSet,readerId,bookId,temp);
+		}
+	}
+	return amount;
+}
+/*加载文件*/
+void load(char *file, Library *library, ReaderSet *readerSet, RecordSet *recordSet) {
+
+}
+/*保存*/
+void save(char *file, Library *library, ReaderSet *readerSet, RecordSet *recordSet) {
+
 }
