@@ -2,18 +2,22 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<Windows.h>
+#include<string.h>
 #include<time.h>
 int main() {
-	time_t t;
-	t = time(NULL);
-	char *time;
-	struct tm *timeinfo;
-	time = ctime(&t);
-	t += 2592000;
-	printf("%s",time);
-	timeinfo = localtime(&t);
-	printf("%s",asctime(timeinfo));
-	printf("HELLO WORLD\n");
+	FILE *file;
+	file = fopen("data1.txt","r");
+	char name[2][20];
+	int id1, id2;
+	if (file) {
+		fscanf(file,"%s%s%d%d",name[0],name[1],&id1,&id2);
+		puts(name[0]);
+		puts(name[1]);
+		printf("%d %d\n", id1,id2);
+		fclose(file);
+	}
 	getchar();
 	return 0;
 }
+
+

@@ -164,7 +164,12 @@ void addRecord(RecordSet *recordSet,int readerId,int bookId,int amount,int actio
 	t += 2592000;
 	timeinfo = localtime(&t);
 	strcpy(record->time,time);
-	strcpy(record->limitedTime, asctime(timeinfo));
+	if (action) {	//借书
+		strcpy(record->limitedTime, asctime(timeinfo));
+	}
+	else {	//还书
+		strcpy(record->limitedTime, "-1");
+	}
 	record->next = recordSet->headRecord;
 	recordSet->headRecord = record;
 	recordSet->amount++;
@@ -342,10 +347,97 @@ int Return(Library *library, ReaderSet *readerSet, RecordSet *recordSet, int rea
 	return amount;
 }
 /*加载文件*/
-void load(char *file, Library *library, ReaderSet *readerSet, RecordSet *recordSet) {
+void load(char **path, Library *library, ReaderSet *readerSet, RecordSet *recordSet) {
+	BookClass *bookClass;
+	Record *record;
+	FILE *file;
+	file = fopen(*(path + 0),"r");
+	if (file) {
+		fscanf(file,"%d%d%d",&library->currentMemory
+			,&library->totalMemory,
+			&library->numOfBookClass);
+		for (int i = 0; i < library->numOfBookClass; i++) {
+			bookClass = (BookClass *)malloc(sizeof(BookClass));
+			fscanf(file,"%d%s%s%d%d",
+				&bookClass->id,
+				bookClass->name,
+				bookClass->author,
+				&bookClass->totalMemory,
+				&bookClass->currentMemory);	//输入书籍信息
+			bookClass->next = library->headBookClass;
+			library->headBookClass = bookClass;
+		}
+		fclose(file);
+	}
+	file = fopen(*(path + 1), "r");
+	if (file) {
+		fprintf(file,"%d",recordSet->amount);
+		for (int i = 0; i < recordSet->amount; i++) {
+			record = (Record *)malloc(sizeof(Record));
+			fscanf(file,"%d%d%d%s%s%d",
+				record->readerId,
+				record->bookId,
+				record->amount,
+				record->time,
+				record->limitedTime,
+				record->action);
+			record->next = recordSet->headRecord;
+			recordSet->headRecord = record;
+		}
+		fclose(file);
+	}
+	file = fopen(*(path + 2),"r");
+	if (file) {
+
+	}
 
 }
 /*保存*/
-void save(char *file, Library *library, ReaderSet *readerSet, RecordSet *recordSet) {
-
+void save(char **path, Library library, ReaderSet readerSet, RecordSet recordSet) {
+	FILE *file;
+	file = fopen(*(path + 0),"w");
+	if (file) {
+		fprintf(file,"%d%d%d",library.currentMemory,
+			library.totalMemory,library.numOfBookClass);
+		while (library.headBookClass) {
+			fprintf(file,"%d\t%s\t%s\t%d\t%d\n", 
+				library.headBookClass->id,
+				library.headBookClass->name,
+				library.headBookClass->author,
+				library.headBookClass->totalMemory,
+				library.headBookClass->currentMemory);
+			library.headBookClass = library.headBookClass->next;
+		}
+		fclose(file);
+	}
+	file = fopen(*(path + 1),"w");
+	if (file) {
+		fprintf(file,"%d",recordSet.amount);
+		while (recordSet.headRecord) {
+			fprintf(file,"%d\t%d\t%d\t%s\t%s\t%d\n",
+				recordSet.headRecord->readerId,
+				recordSet.headRecord->bookId,
+				recordSet.headRecord->amount,
+				recordSet.headRecord->time,
+				recordSet.headRecord->limitedTime,
+				recordSet.headRecord->action);
+			recordSet.headRecord = recordSet.headRecord->next;
+		}
+		fclose(file);
+	}
+	file = fopen(*(path + 1),"w");
+	if (file) {
+		fprintf(file,"%d",readerSet.amount);
+		while (readerSet.headReader) {
+			fscanf(file,"%d\t%s\t", 
+				readerSet.headReader->id, 
+				readerSet.headReader->name);
+			for (int i = 0; i < readerSet.headReader->borBookSet.amount; i++) {
+				fprintf(file,"%d\t%d\t", readerSet.headReader->borBookSet.borBooks[i]->id,
+					readerSet.headReader->borBookSet.borBooks[i]->id);
+			}
+			fprintf(file,"\t");
+		}
+		fclose(file);
+	}
 }
