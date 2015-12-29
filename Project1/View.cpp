@@ -124,6 +124,9 @@ int main() {
 			exit(0);
 		}
 		//system("cls");
+		printf("图书馆目前共有%d类书，共有%d本书，现有%d本。\n", library.numOfBookClass,
+			library.totalMemory,
+			library.currentMemory);
 		printf("1.查询书的信息\n");
 		printf("请输入数字进入相应功能：");
 	}

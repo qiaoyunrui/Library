@@ -27,7 +27,7 @@ typedef struct PriBorBook {
 	int amount;
 }BorBook;
 typedef struct PriBorBookSet {
-	BorBook *borBooks[MAX_SIZE];
+	BorBook borBooks[MAX_SIZE];
 	int amount;
 }BorBookSet;
 //-----------------------------读者信息-----------------------
@@ -46,8 +46,8 @@ typedef struct PriRecord {
 	int readerId;
 	int bookId;
 	int amount;	//图书数量
-	char time[20];	//借书时间
-	char limitedTime[20];	//归还期限
+	char time[30];	//借书时间
+	char limitedTime[30];	//归还期限
 	int action;
 	struct PriRecord *next;
 }Record;
@@ -77,11 +77,11 @@ typedef struct PriSearchList {
 /*Control*/
 //-----------------------------个人书库-----------------------
 /*查找个人书库的书籍*/
-BorBook *searchBorBook(BorBookSet borBookSet, int id) {
+ BorBook *searchBorBook(BorBookSet borBookSet, int id) {
 	BorBook *borBook = NULL;
 	for (int i = 0; i < borBookSet.amount; i++) {
-		if (id == borBookSet.borBooks[i]->id) {
-			borBook = borBookSet.borBooks[i];
+		if (id == borBookSet.borBooks[i].id) {
+			borBook = &borBookSet.borBooks[i];
 		}
 	}
 	return borBook;
@@ -95,7 +95,7 @@ int addNewBorBook(BorBookSet *borBookSet, int id, int amount) {
 		BorBook *borBook = (BorBook *)malloc(sizeof(BorBook));
 		borBook->amount = amount;
 		borBook->id = id;
-		borBookSet->borBooks[borBookSet->amount] = borBook;	//ERROR
+		borBookSet->borBooks[borBookSet->amount] = *borBook;	//ERROR
 		borBookSet->amount++;
 		return 1;
 	}
@@ -209,6 +209,7 @@ void addRecord(RecordSet *recordSet,int readerId,int bookId,int amount,int actio
 	t = time(NULL);
 	char *time;
 	time = ctime(&t);
+	printf("%s\n",time);
 	t += 2592000;
 	timeinfo = localtime(&t);
 	strcpy(record->time,time);
@@ -216,7 +217,7 @@ void addRecord(RecordSet *recordSet,int readerId,int bookId,int amount,int actio
 		strcpy(record->limitedTime, asctime(timeinfo));
 	}
 	else {	//还书
-		strcpy(record->limitedTime, "-1");
+		strcpy(record->limitedTime, "-1\n");
 	}
 	record->next = recordSet->headRecord;
 	recordSet->headRecord = record;
@@ -306,6 +307,18 @@ int queryLibrary(Library library, BookClass *bookClasses[MAX_SIZE], char* key) {
 	}
 	return length;
 }
+/*查询前驱节点*/
+BookClass *findPreBookClass(Library library,int id) {
+	BookClass *preBookClass = NULL,*bookClass;
+	if (library.headBookClass) {
+		bookClass = library.headBookClass;
+		while (bookClass && bookClass->id != id) {
+			preBookClass = bookClass;
+			bookClass = bookClass->next;
+		}
+	}
+	return preBookClass;
+}
 /*ID查询*/
 BookClass *queryLibraryById(Library library, int id) {
 	BookClass *bookClass;
@@ -346,24 +359,28 @@ void addBooks(Library *library, char *name, char *author, int amount) {
 }
 /*旧书清零*/
 void clearBooks(Library *library, int id) {
-	BookClass *bookClass;
+	BookClass *preBookClass = NULL;
 	BookClass *temp;
-	if (library->headBookClass->id == id) {
+	if (library->headBookClass->id == id) {	//头节点
 		temp = library->headBookClass;
+		library->numOfBookClass--;
+		library->currentMemory -= temp->currentMemory;
+		library->totalMemory -= temp->totalMemory;
 		library->headBookClass = library->headBookClass->next;
 		free(temp);
 	}
-	else {
-		BookClass *preTemp = library->headBookClass;		//前驱节点
-		temp = library->headBookClass->next;
-		while (temp) {
-			if (temp->id == id) {
-				preTemp = temp->next;
-				free(temp);
-				break;
-			}
-			preTemp = temp;
-			temp = temp->next;
+	else {	//可能存在于后续节点
+		preBookClass = findPreBookClass(*library, id);	//获取前驱节点
+		if (preBookClass) {		//存在这本书
+			temp = preBookClass->next;
+			library->numOfBookClass--;
+			library->currentMemory -= temp->currentMemory;
+			library->totalMemory -= temp->totalMemory;
+			preBookClass->next = temp->next;
+			free(temp);
+		}
+		else {
+			printf("不存在\n");
 		}
 	}
 }
@@ -457,16 +474,16 @@ void load(char *path1, char *path2, char *path3, Library *library, ReaderSet *re
 	}
 	file = fopen(path2, "r");
 	if (file) {
-		fprintf(file,"%d",recordSet->amount);
+		fscanf(file,"%d",&recordSet->amount);
 		for (int i = 0; i < recordSet->amount; i++) {
 			record = (Record *)malloc(sizeof(Record));
-			fscanf(file,"%d%d%d%s%s%d",
+			fscanf(file,"%d%d%d",
 				&record->readerId,
 				&record->bookId,
-				&record->amount,
-				record->time,
-				record->limitedTime,
-				&record->action);
+				&record->amount);
+			fgets(record->time,30,file);
+			fgets(record->limitedTime, 30, file);
+			fscanf(file,"%d",&record->action);
 			record->next = recordSet->headRecord;
 			recordSet->headRecord = record;
 		}
@@ -477,11 +494,11 @@ void load(char *path1, char *path2, char *path3, Library *library, ReaderSet *re
 		fscanf(file,"%d",&readerSet->amount);
 		for (int i = 0; i < readerSet->amount; i++) {
 			reader = (Reader *)malloc(sizeof(Reader));
-			fscanf(file,"%d%s",&reader->id,reader->name);
+			fscanf(file,"%d%s%d",&reader->id,reader->name,&reader->borBookSet.amount);
 			for (int j = 0; j < reader->borBookSet.amount; j++) {
 				fscanf(file,"%d%d",
-					&reader->borBookSet.borBooks[i]->id,
-					&reader->borBookSet.borBooks[i]->amount);
+					&reader->borBookSet.borBooks[i].id,
+					&reader->borBookSet.borBooks[i].amount);
 			}
 			reader->next = readerSet->headReader;
 			readerSet->headReader = reader;
@@ -512,7 +529,7 @@ void save(char *path1, char *path2, char *path3, Library library, ReaderSet read
 	if (file) {
 		fprintf(file,"%d\n",recordSet.amount);
 		while (recordSet.headRecord) {
-			fprintf(file,"%d\t%d\t%d\t%s\t%s\t%d\n",
+			fprintf(file,"%d\t%d\t%d%s%s%d\n",
 				recordSet.headRecord->readerId,
 				recordSet.headRecord->bookId,
 				recordSet.headRecord->amount,
@@ -527,12 +544,13 @@ void save(char *path1, char *path2, char *path3, Library library, ReaderSet read
 	if (file) {
 		fprintf(file,"%d\n",readerSet.amount);
 		while (readerSet.headReader) {
-			fprintf(file,"%d\t%s\t", 
+			fprintf(file,"%d\t%s\t%d\t", 
 				readerSet.headReader->id, 
-				readerSet.headReader->name);
+				readerSet.headReader->name,
+				readerSet.headReader->borBookSet.amount);
 			for (int i = 0; i < readerSet.headReader->borBookSet.amount; i++) {
-				fprintf(file,"%d\t%d\t", readerSet.headReader->borBookSet.borBooks[i]->id,
-					readerSet.headReader->borBookSet.borBooks[i]->amount);
+				fprintf(file,"%d\t%d\t", readerSet.headReader->borBookSet.borBooks[i].id,
+					readerSet.headReader->borBookSet.borBooks[i].amount);
 			}
 			fprintf(file,"\n");
 			readerSet.headReader = readerSet.headReader->next;
