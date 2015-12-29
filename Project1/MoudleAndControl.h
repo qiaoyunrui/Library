@@ -27,7 +27,7 @@ typedef struct PriBorBook {
 	int amount;
 }BorBook;
 typedef struct PriBorBookSet {
-	BorBook borBooks[MAX_SIZE];
+	BorBook *borBooks[MAX_SIZE];
 	int amount;
 }BorBookSet;
 //-----------------------------读者信息-----------------------
@@ -80,8 +80,8 @@ typedef struct PriSearchList {
  BorBook *searchBorBook(BorBookSet borBookSet, int id) {
 	BorBook *borBook = NULL;
 	for (int i = 0; i < borBookSet.amount; i++) {
-		if (id == borBookSet.borBooks[i].id) {
-			borBook = &borBookSet.borBooks[i];
+		if (id == borBookSet.borBooks[i]->id) {
+			borBook = borBookSet.borBooks[i];
 		}
 	}
 	return borBook;
@@ -95,7 +95,7 @@ int addNewBorBook(BorBookSet *borBookSet, int id, int amount) {
 		BorBook *borBook = (BorBook *)malloc(sizeof(BorBook));
 		borBook->amount = amount;
 		borBook->id = id;
-		borBookSet->borBooks[borBookSet->amount] = *borBook;	//ERROR
+		borBookSet->borBooks[borBookSet->amount] = borBook;	//ERROR
 		borBookSet->amount++;
 		return 1;
 	}
@@ -134,6 +134,21 @@ int addReader(ReaderSet *readerSet,char *name) {
 	readerSet->headReader = reader;
 	readerSet->amount++;
 	return reader->id;
+}
+/*显示读者列表*/
+void showReaders(ReaderSet readerSet) {
+	while (readerSet.headReader) {
+		printf("->%d\t%s\t%d\t\n",
+			readerSet.headReader->id,
+			readerSet.headReader->name,
+			readerSet.headReader->borBookSet.amount);
+		for (int i = 0; i < readerSet.headReader->borBookSet.amount; i++) {
+			printf("%d\t%d\t", readerSet.headReader->borBookSet.borBooks[i]->id,
+				readerSet.headReader->borBookSet.borBooks[i]->amount);
+		}
+		printf("\n");
+		readerSet.headReader = readerSet.headReader->next;
+	}
 }
 /*根据id查找读者*/
 Reader *searchReader(ReaderSet readerSet, int id) {
@@ -217,11 +232,24 @@ void addRecord(RecordSet *recordSet,int readerId,int bookId,int amount,int actio
 		strcpy(record->limitedTime, asctime(timeinfo));
 	}
 	else {	//还书
-		strcpy(record->limitedTime, "-1\n");
+		strcpy(record->limitedTime, time);
 	}
 	record->next = recordSet->headRecord;
 	recordSet->headRecord = record;
 	recordSet->amount++;
+}
+/*显示记录*/
+void showRecord(RecordSet recordSet) {
+	while (recordSet.headRecord) {
+		printf("->%d\t%d\t%d\n%s%s%d\n",
+			recordSet.headRecord->readerId,
+			recordSet.headRecord->bookId,
+			recordSet.headRecord->amount,
+			recordSet.headRecord->time,
+			recordSet.headRecord->limitedTime,
+			recordSet.headRecord->action);
+		recordSet.headRecord = recordSet.headRecord->next;
+	}
 }
 //-----------------------------ID索引表-----------------------
 /*创建Id索引表*/
@@ -368,6 +396,7 @@ void clearBooks(Library *library, int id) {
 		library->totalMemory -= temp->totalMemory;
 		library->headBookClass = library->headBookClass->next;
 		free(temp);
+		printf("->清除完毕。\n");
 	}
 	else {	//可能存在于后续节点
 		preBookClass = findPreBookClass(*library, id);	//获取前驱节点
@@ -378,9 +407,10 @@ void clearBooks(Library *library, int id) {
 			library->totalMemory -= temp->totalMemory;
 			preBookClass->next = temp->next;
 			free(temp);
+			printf("->清除完毕。\n");
 		}
 		else {
-			printf("不存在\n");
+			printf("->不存在此书。\n");
 		}
 	}
 }
@@ -495,10 +525,12 @@ void load(char *path1, char *path2, char *path3, Library *library, ReaderSet *re
 		for (int i = 0; i < readerSet->amount; i++) {
 			reader = (Reader *)malloc(sizeof(Reader));
 			fscanf(file,"%d%s%d",&reader->id,reader->name,&reader->borBookSet.amount);
+			int a;
 			for (int j = 0; j < reader->borBookSet.amount; j++) {
-				fscanf(file,"%d%d",
-					&reader->borBookSet.borBooks[i].id,
-					&reader->borBookSet.borBooks[i].amount);
+				BorBook *borBook = (BorBook *)malloc(sizeof(BorBook));
+				reader->borBookSet.borBooks[i] = borBook;
+				fscanf(file, "%d%d", &borBook->id,
+					&borBook->amount);
 			}
 			reader->next = readerSet->headReader;
 			readerSet->headReader = reader;
@@ -549,8 +581,8 @@ void save(char *path1, char *path2, char *path3, Library library, ReaderSet read
 				readerSet.headReader->name,
 				readerSet.headReader->borBookSet.amount);
 			for (int i = 0; i < readerSet.headReader->borBookSet.amount; i++) {
-				fprintf(file,"%d\t%d\t", readerSet.headReader->borBookSet.borBooks[i].id,
-					readerSet.headReader->borBookSet.borBooks[i].amount);
+				fprintf(file,"%d\t%d\t", readerSet.headReader->borBookSet.borBooks[i]->id,
+					readerSet.headReader->borBookSet.borBooks[i]->amount);
 			}
 			fprintf(file,"\n");
 			readerSet.headReader = readerSet.headReader->next;
