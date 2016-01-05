@@ -11,6 +11,7 @@ typedef struct PriBookClass {
 	int id;	//书号
 	char name[20];
 	char author[20];
+	char publisher[20];
 	int totalMemory;
 	int currentMemory;
 	struct PriBookClass *next;
@@ -68,6 +69,7 @@ typedef struct PriSearchListByIdSet {
 typedef struct PriSearchNode {
 	char name[20];
 	char author[20];
+	char publisher[20];
 	BookClass *bookClass;
 }SearchNode;
 typedef struct PriSearchList {
@@ -241,13 +243,18 @@ void addRecord(RecordSet *recordSet,int readerId,int bookId,int amount,int actio
 /*显示记录*/
 void showRecord(RecordSet recordSet) {
 	while (recordSet.headRecord) {
-		printf("->%d\t%d\t%d\n%s%s%d\n",
+		printf("->借书证号：%d\t书号：%d\t数量：%d\n日期：%s",
 			recordSet.headRecord->readerId,
 			recordSet.headRecord->bookId,
 			recordSet.headRecord->amount,
-			recordSet.headRecord->time,
-			recordSet.headRecord->limitedTime,
-			recordSet.headRecord->action);
+			recordSet.headRecord->time);
+		if (recordSet.headRecord->action == 1) {
+			printf("截至日期：%s", recordSet.headRecord->limitedTime);
+			printf("借书\n");
+		}
+		else {
+			printf("还书\n");
+		}
 		recordSet.headRecord = recordSet.headRecord->next;
 	}
 }
@@ -285,6 +292,7 @@ SearchList createSearchList(Library library) {
 	while (library.headBookClass) {
 		strcpy(searchList.searchNode[i].name, library.headBookClass->name);
 		strcpy(searchList.searchNode[i].author, library.headBookClass->author);
+		strcpy(searchList.searchNode[i].publisher, library.headBookClass->publisher);
 		searchList.searchNode[i].bookClass = library.headBookClass;
 		i++;
 		library.headBookClass = library.headBookClass->next;	//指向下一个节点
@@ -297,7 +305,8 @@ int search(SearchList searchList, int index[1000], char *key) {
 	int sign = 0;
 	for (int i = 0; i < searchList.amount; i++) {
 		if (strcmp(searchList.searchNode[i].name, key)  == 0||
-			strcmp(searchList.searchNode[i].author, key) == 0) {	//匹配
+			strcmp(searchList.searchNode[i].author, key) == 0 || 
+			strcmp(searchList.searchNode[i].publisher,key) == 0) {	//匹配
 			//printf("Match\n");
 			index[sign] = i;
 			sign++;
@@ -355,7 +364,7 @@ BookClass *queryLibraryById(Library library, int id) {
 	return bookClass;
 }
 /*采编入库*/
-void addBooks(Library *library, char *name, char *author, int amount) {
+void addBooks(Library *library, char *name, char *author,char *publisher, int amount) {
 	BookClass *bookClass = NULL;
 	BookClass *temp = library->headBookClass;
 	while (temp) {
@@ -369,6 +378,7 @@ void addBooks(Library *library, char *name, char *author, int amount) {
 		bookClass = (BookClass*)malloc(sizeof(BookClass));
 		strcpy(bookClass->name, name);
 		strcpy(bookClass->author, author);
+		strcpy(bookClass->publisher,publisher);
 		bookClass->currentMemory = amount;
 		bookClass->totalMemory = amount;
 		bookClass->id = getBookClassMaxId(*library) + 1;		//为其分配最大id
@@ -491,10 +501,11 @@ void load(char *path1, char *path2, char *path3, Library *library, ReaderSet *re
 			&library->numOfBookClass);
 		for (int i = 0; i < library->numOfBookClass; i++) {
 			bookClass = (BookClass *)malloc(sizeof(BookClass));
-			fscanf(file,"%d%s%s%d%d",
+			fscanf(file,"%d%s%s%s%d%d",
 				&bookClass->id,
 				bookClass->name,
 				bookClass->author,
+				bookClass->publisher,
 				&bookClass->totalMemory,
 				&bookClass->currentMemory);	//输入书籍信息
 			bookClass->next = library->headBookClass;
@@ -547,10 +558,11 @@ void save(char *path1, char *path2, char *path3, Library library, ReaderSet read
 		fprintf(file,"%d\t%d\t%d\n",library.currentMemory,
 			library.totalMemory,library.numOfBookClass);
 		while (library.headBookClass) {
-			fprintf(file,"%d\t%s\t%s\t%d\t%d\n", 
+			fprintf(file,"%d\t%s\t%s\t%s\t%d\t%d\n", 
 				library.headBookClass->id,
 				library.headBookClass->name,
 				library.headBookClass->author,
+				library.headBookClass->publisher,
 				library.headBookClass->totalMemory,
 				library.headBookClass->currentMemory);
 			library.headBookClass = library.headBookClass->next;

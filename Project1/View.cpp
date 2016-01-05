@@ -45,7 +45,7 @@ int main() {
 			
 			BookClass *bookClasses[MAX_SIZE];
 			char info[20];
-			printf("->请输入图书的名字或者作者：\n->");
+			printf("->请输入图书的名字、作者或者出版社：\n->");
 			scanf("%s", info);
 			int length = queryLibrary(library, bookClasses, info);
 			//printf("%d\n",length);
@@ -56,12 +56,13 @@ int main() {
 			else {
 				system("cls");
 				printf("");
-				printf("书号\t书名\t作者\t总库量\t现有量\n");
+				printf("书号\t书名\t作者\t出版社\t总库量\t现有量\n");
 				for (int i = 0; i < length; i++) {
-					printf("%d\t%s\t%s\t%d\t%d\n",
+					printf("%3d%10s%10s%10s%5d%5d\n",
 						bookClasses[i]->id,
 						bookClasses[i]->name,
 						bookClasses[i]->author,
+						bookClasses[i]->publisher,
 						bookClasses[i]->totalMemory,
 						bookClasses[i]->currentMemory);
 				}
@@ -126,10 +127,11 @@ int main() {
 		if (index == 6) {	//采编入库
 			char name[20];
 			char author[20];
+			char publisher[20];
 			int amount;
-			printf("->请输入图书名字、作者以及册数。->\n");
-			scanf("%s %s %d",name,author,&amount);
-			addBooks(&library,name,author,amount);
+			printf("->请输入图书名字、作者、出版社以及册数。->\n");
+			scanf("%s %s %s %d",name,author,publisher,&amount);
+			addBooks(&library,name,author,publisher,amount);
 			system("cls");
 			printf("->入库成功\n");
 		} 
@@ -179,7 +181,6 @@ int main() {
 		printf("+---------------------------------------------------------+\n");
 		printf("->");
 	}
-	
 	return 0;
 }
 
