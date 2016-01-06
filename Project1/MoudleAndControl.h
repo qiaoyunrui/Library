@@ -368,7 +368,9 @@ void addBooks(Library *library, char *name, char *author,char *publisher, int am
 	BookClass *bookClass = NULL;
 	BookClass *temp = library->headBookClass;
 	while (temp) {
-		if (strcmp(name, temp->name) == 0 && strcmp(author,temp->author) == 0) {
+		if (strcmp(name, temp->name) == 0 && 
+			strcmp(author,temp->author) == 0 && 
+			strcmp(publisher,temp->publisher) == 0) {
 			bookClass = library->headBookClass;
 			break;
 		}
